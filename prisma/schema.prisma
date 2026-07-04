@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model CanvasSession {
+  id               String           @id @default(cuid())
+  title            String           @db.VarChar(160)
+  status           String           @default("created") @db.VarChar(32)
+  contextTokenHash String           @db.VarChar(128)
+  currentDocumentId String?         @db.VarChar(255)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  artifacts        CanvasArtifact[]
+  runs             CanvasRun[]
+
+  @@index([status, createdAt])
+  @@map("canvas_sessions")
+}
+
+model CanvasArtifact {
+  id          String        @id @default(cuid())
+  canvasId    String
+  kind        String        @db.VarChar(32)
+  version     Int
+  bucket      String        @db.VarChar(255)
+  objectKey   String        @db.VarChar(1024)
+  contentType String        @db.VarChar(128)
+  sizeBytes   Int
+  createdAt   DateTime      @default(now())
+
+  canvas      CanvasSession @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@unique([canvasId, kind, version])
+  @@index([canvasId, createdAt])
+  @@map("canvas_artifacts")
+}
+
+model CanvasRun {
+  id        String        @id @default(cuid())
+  canvasId  String
+  status    String        @default("queued") @db.VarChar(32)
+  prompt    String        @db.Text
+  error     String?       @db.Text
+  startedAt DateTime?
+  endedAt   DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  canvas    CanvasSession @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@index([canvasId, createdAt])
+  @@index([status, createdAt])
+  @@map("canvas_runs")
+}
